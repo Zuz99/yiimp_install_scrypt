@@ -160,7 +160,7 @@
     echo -e "$GREEN Done...$COL_RESET"
 
     
-    # Installing Installing php7.4
+    # Installing Installing php7.3
     echo
     echo
     echo -e "$CYAN => Installing php7.3 : $COL_RESET"
@@ -434,10 +434,10 @@
     echo -e "$CYAN => Update default timezone. $COL_RESET"
     echo
     
-    echo -e " Setting TimeZone to UTC...$COL_RESET"
+    echo -e " Setting TimeZone to ASIA...$COL_RESET"
     if [ ! -f /etc/timezone ]; then
-    echo "Setting timezone to UTC."
-    echo "Etc/UTC" > sudo /etc/timezone
+    echo "Setting timezone to ASIA."
+    echo "Asia/Jakarta" > sudo /etc/timezone
     sudo systemctl restart rsyslog
     fi
     sudo systemctl status rsyslog | sed -n "1,3p"
