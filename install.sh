@@ -158,16 +158,7 @@
     sleep 15
     echo
     echo -e "$GREEN Done...$COL_RESET"
-
-    
-    # Installing Installing php7.3
-    echo
-    echo
-    echo -e "$CYAN => Installing php7.3 : $COL_RESET"
-    sudo apt install php7.3-memcache php7.3-memcached memcached php7.3-cli
-    echo
-    sleep 3
-    
+     
     source conf/pool.conf
     if [ ! -f /etc/apt/sources.list.d/ondrej-php-bionic.list ]; then
     sudo add-apt-repository -y ppa:ondrej/php
@@ -193,7 +184,13 @@
     echo
     echo -e "$GREEN Done...$COL_RESET"
 
-
+    # Installing Installing php7.3
+    echo
+    echo
+    echo -e "$CYAN => Installing php7.3 : $COL_RESET"
+    sudo apt install php7.3-memcache php7.3-memcached memcached php7.3-cli
+    echo
+    sleep 3
     
     # Installing other needed files
     echo
