@@ -187,8 +187,8 @@
     # Installing Installing php7.2
     echo
     echo
-    echo -e "$CYAN => Installing php7.2 : $COL_RESET"
-    sudo apt install php7.2-memcache php7.2-memcached memcached php7.2-cli
+    echo -e "$CYAN => Installing php7.3 : $COL_RESET"
+    sudo apt install php7.3-memcache php7.3-memcached memcached php7.3-cli
     echo
     sleep 3
     
