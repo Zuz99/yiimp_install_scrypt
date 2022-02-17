@@ -372,7 +372,7 @@
     
     # Compil Blocknotify
     cd ~
-    git clone https://github.com/Zuz99/yiimp.git -b poolmine
+    git clone https://github.com/DirtyHarryDev/yiimp.git -b poolmine
     cd $HOME/yiimp/blocknotify
     sudo sed -i 's/tu8tu5/'$blckntifypass'/' blocknotify.cpp
     make -j$((`nproc`+1))
