@@ -13,9 +13,9 @@ Original Yiimp Installer : https://github.com/cryptopool-builders/multipool_orig
 
 ***********************************
 
-## Install script for yiimp on Ubuntu Server 16.04 / 18.04 (use Tpruvot's Yiimp)
+## Install script for yiimp on Ubuntu Server 18.04 (use Kudaraidee's Yiimp)
 
-USE THIS SCRIPT ON FRESH INSTALL UBUNTU Server 16.04 / 18.04 !
+USE THIS SCRIPT ON FRESH INSTALL UBUNTU Server 18.04 !
 
 Connect on your VPS =>
 - apt update
