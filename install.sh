@@ -342,7 +342,7 @@
     echo -e "$GREEN Done...$COL_RESET"
 
     
-    Installing PhpMyAdmin
+    #echo Installing PhpMyAdmin
     echo
     echo
     echo -e "$CYAN => Installing phpMyAdmin $COL_RESET"
