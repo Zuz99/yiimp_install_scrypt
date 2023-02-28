@@ -190,7 +190,7 @@
     echo
     echo
     echo -e "$CYAN => Installing php7.3 : $COL_RESET"
-    sudo apt install php7.3-memcache php7.3-memcached memcached php7.3-cli -y
+    sudo apt install php7.3-cli php7.3 php7.3-memcache php7.3-memcached memcached php7.3-fpm php7.3-mysql -y
     echo
     sleep 3
     
@@ -375,7 +375,7 @@
     
     # Compil Blocknotify
     cd ~
-    git clone https://github.com/Zuz99/yiimp.git
+    git clone https://github.com/Zuz99/yiimp-full.git
     cd $HOME/yiimp/blocknotify
     sudo sed -i 's/akay/'$blckntifypass'/' blocknotify.cpp
     make -j$((`nproc`+1))
@@ -960,7 +960,7 @@
     cd yiimp/sql
     
     # Import sql dump
-    sudo zcat 2020-11-10-yaamp.sql.gz | sudo mysql --defaults-group-suffix=host1
+    sudo zcat 2021-06-21-yaamp.sql.gz | sudo mysql --defaults-group-suffix=host1
     
     # Oh the humanity!
     sudo mysql --defaults-group-suffix=host1 --force < 2016-04-24-market_history.sql
