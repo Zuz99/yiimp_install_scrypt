@@ -162,7 +162,7 @@
     echo -e "$GREEN Done...$COL_RESET"
      
     source conf/pool.conf
-    if [ ! -f /etc/apt/sources.list.d/ondrej-php-bionic.list ]; then
+    if [ ! -f /etc/apt/sources.list.d/ondrej-php-jammy.list ]; then
     sudo add-apt-repository -y ppa:ondrej/php
     fi
     sudo apt -y update
@@ -189,8 +189,8 @@
     # Installing Installing php7.2
     echo
     echo
-    echo -e "$CYAN => Installing php7.3 : $COL_RESET"
-    sudo apt install php7.3-cli php7.3 php7.3-memcache php7.3-memcached memcached php7.3-fpm php7.3-mysql -y
+    echo -e "$CYAN => Installing php8.2 : $COL_RESET"
+    sudo apt install php7.3-cli php8.2 php7.3-memcache php7.3-memcached memcached php7.3-fpm php7.3-mysql -y
     echo
     sleep 3
     
