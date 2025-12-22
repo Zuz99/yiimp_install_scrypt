@@ -1,9 +1,9 @@
-Yiimp v0.1 // 20.09.2022
-Thanks to cryptopool-builders !!!!!!!!
+Yiimp v0.1 // 22.12.2025
+Thanks to cryptopool-builders, Dirty hardy, Vodius, Kudaridee !!!!!!!!
 
 Information =>
-* Works with Ubuntu Server 16.04 / 18.04
-* Update PHP 7.3
+* Works with Ubuntu Server 22 x64
+* Update PHP 8.2
 * Change Aptitude by APT
 * Remove question Panel Admin
 * Remove question Time Zone
@@ -20,3 +20,7 @@ Fix =>
 Change =>
 * /etc/screen-scrypt.sh = add to crontab (main,loop2,blocks,debug)
 * /var/yiimp/sauv =  Backup SQL FrontEnd
+
+Update =>
+* New Web ui 
+* Startum More algo
