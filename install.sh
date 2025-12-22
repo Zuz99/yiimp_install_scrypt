@@ -564,12 +564,8 @@ clear
         sleep 3
 
         # Generating Random Password for stratum
-        #blckntifypass=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-		sudo sed -i 's/tu8tu5/'$blckntifypass'/' blocknotify.cpp
-		hide_output make -j$((`nproc`+1))
-		sudo strip blocknotify
-		sleep 1
-
+        blckntifypass=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
+		
         # Download Version of Yiimp and stratum
         cd ~
         if [[ ("$yiimpver" == "1" || "$yiimpver" == "") ]]; then
@@ -594,10 +590,10 @@ clear
         log_message "Cloned Yiimp and stratum repositories"
 
         # Compile Blocknotify
-        #cd ${absolutepath}/stratum/blocknotify
-        #sudo sed -i 's/tu8tu5/'$blckntifypass'/' blocknotify.cpp
-        #hide_output "Compile Blocknotify" sudo make
-        #log_message "Compiled blocknotify"
+        cd ${absolutepath}/stratum/blocknotify
+        sudo sed -i 's/tu8tu5/'$blckntifypass'/' blocknotify.cpp
+        hide_output "Compile Blocknotify" sudo make
+        log_message "Compiled blocknotify"
         sleep 1
 
         # Compile iniparser
