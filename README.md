@@ -2,7 +2,7 @@
 ***********************************
 
 ## Install script for yiimp on Ubuntu Server 22.04 (for test final)
-
+Originall Source : https://github.com/vaudois/yiimp_install_scrypt
 USE THIS SCRIPT ON FRESH INSTALL UBUNTU Server 22.04 x64 !
 
 Connect on your VPS =>
@@ -51,4 +51,4 @@ While I did add some server security to the script, it is every server owners re
 There will be several wallets already in yiimp. These have nothing to do with the installation script and are from the database import from the yiimp github. 
 
 
-** This source work in progres **
+## This source work in progres ##
