@@ -2,7 +2,7 @@
 ***********************************
 
 ## Install script for yiimp on Ubuntu Server 22.04 (for test final)
-Originall Source : https://github.com/vaudois/yiimp_install_scrypt
+## Forked : https://github.com/vaudois/yiimp_install_scrypt ##
 USE THIS SCRIPT ON FRESH INSTALL UBUNTU Server 22.04 x64 !
 
 Connect on your VPS =>
