@@ -211,7 +211,7 @@ clear
 		echo -e "${GREEN}  3. Afiniel-Tech                    ${COL_RESET}"
 		echo -e "${GREEN}  4. Afiniel                         ${COL_RESET}"
 		echo -e "${GREEN}  5. SabiasQue                       ${COL_RESET}"
-		echo -e "${GREEN}  6. Tpfuemp (default)               ${COL_RESET}"
+		echo -e "${GREEN}  6. Zuz99 (default)               ${COL_RESET}"
 		echo -e "${CYAN}======================================${COL_RESET}"
 
 		while true; do
