@@ -51,4 +51,4 @@ While I did add some server security to the script, it is every server owners re
 There will be several wallets already in yiimp. These have nothing to do with the installation script and are from the database import from the yiimp github. 
 
 
-## This source work in progres ##
+## Dont use this scirpt.. This source work in progres ##
