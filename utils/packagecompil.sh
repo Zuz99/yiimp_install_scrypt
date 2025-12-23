@@ -2,7 +2,7 @@
 ################################################################################
 #
 # Program:
-#   Install needed packages to compile cryptocurrency on Ubuntu 22.04
+#   Install needed packages to compile cryptocurrency on Ubuntu 20.04/22.04
 #
 ################################################################################
 
@@ -50,8 +50,14 @@ function package_compile_crypto
 	echo -e "$GREEN Done...$COL_RESET"
  	sleep 3
  	echo -e "$YELLOW => Installing Package to compile crypto currency$YELLOW step 4 $COL_RESET"
- 	sleep 3    # Ubuntu 22.04 specific packages
-    apt_install libcurl4-openssl-dev libidn2-dev libgcc-11-dev
+ 	sleep 3
+
+    # Paquets spécifiques à Ubuntu 20.04 ou 22.04
+    if [[ "$DISTRO" == "20" ]]; then
+        apt_install libcurl4-gnutls-dev libidn11-dev libgcc-10-dev
+    elif [[ "$DISTRO" == "22" ]]; then
+        apt_install libcurl4-openssl-dev libidn2-dev libgcc-11-dev
+    fi
 
 	echo -e "$GREEN Done...$COL_RESET"
  	sleep 3

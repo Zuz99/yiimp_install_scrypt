@@ -1,7 +1,7 @@
 #!/bin/bash
 #########################################################
 # Updated by Vaudois
-# Compatible with Ubuntu 22.04, Ubuntu 18+ support removed
+# Compatible with Ubuntu 20/22, Ubuntu 18 support removed
 # Adapted for ARM architectures
 #########################################################
 
@@ -18,14 +18,25 @@ CYAN=$ESC_SEQ"36;01m"
 echo
 echo -e "$CYAN => Checking prerequisites: $COL_RESET"
 
-# Check Ubuntu version (Ubuntu 22.04 only)
+# Check Ubuntu version
 DISTRO=""
-if [[ "$(lsb_release -d | sed 's/.*:\s*//' | sed 's/22\.04\.[0-9]/22.04/')" == "Ubuntu 22.04 LTS" ]]; then
+if [[ "$(lsb_release -d | sed 's/.*:\s*//' | sed 's/20\.04\.[0-9]/20.04/')" == "Ubuntu 20.04 LTS" ]]; then
+    DISTRO=20
+    sudo chmod g-w /etc /etc/default /usr
+elif [[ "$(lsb_release -d | sed 's/.*:\s*//' | sed 's/22\.04\.[0-9]/22.04/')" == "Ubuntu 22.04 LTS" ]]; then
     DISTRO=22
     sudo chmod g-w /etc /etc/default /usr
+elif [[ "$(lsb_release -d | sed 's/.*:\s*//' | sed 's/16\.04\.[0-9]/16.04/')" == "Ubuntu 16.04 LTS" ]]; then
+    echo -e "$RED This script does not support Ubuntu 16.04. Supported versions: Ubuntu 20.04 and 22.04$COL_RESET"
+    echo -e "$RED Stopping installation!$COL_RESET"
+    exit 1
+elif [[ "$(lsb_release -d | sed 's/.*:\s*//' | sed 's/18\.04\.[0-9]/18.04/')" == "Ubuntu 18.04 LTS" ]]; then
+    echo -e "$RED This script no longer supports Ubuntu 18.04 (end of standard support). Please upgrade to Ubuntu 20.04 or 22.04$COL_RESET"
+    echo -e "$RED Stopping installation!$COL_RESET"
+    exit 1
 else
-    echo -e "$RED Error: This installer supports only Ubuntu 22.04 LTS.$COL_RESET"
-    echo -e "$RED Detected: $(lsb_release -d | sed 's/.*:\s*//')$COL_RESET"
+    echo -e "$RED Unsupported Ubuntu version. This script supports only Ubuntu 20.04 and 22.04$COL_RESET"
+    echo -e "$RED Stopping installation!$COL_RESET"
     exit 1
 fi
 

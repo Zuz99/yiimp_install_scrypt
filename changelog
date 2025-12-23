@@ -2,7 +2,7 @@ Yiimp v0.1 // 22.12.2025
 Thanks to cryptopool-builders, Dirty hardy, Vodius, Kudaridee !!!!!!!!
 
 Information =>
-* Works with Ubuntu Server 22 x64
+* Works with Ubuntu Server 22.04
 * Update PHP 8.2
 * Change Aptitude by APT
 * Remove question Panel Admin
@@ -20,7 +20,3 @@ Fix =>
 Change =>
 * /etc/screen-scrypt.sh = add to crontab (main,loop2,blocks,debug)
 * /var/yiimp/sauv =  Backup SQL FrontEnd
-
-Update =>
-* New Web ui 
-* Stratum More algo

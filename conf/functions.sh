@@ -1,21 +1,21 @@
 #!/bin/bash
 ########################################################
 # Modified by Vaudois for crypto use...
-# Updated for Ubuntu 22.04 only with PHP 8.3
+# Updated for Ubuntu 20/22 compatibility with PHP 8.3
 # Changes:
 # - Added support for DISTRO=22 with PHP 8.3
 # - Improved error handling and logging
-# - Ubuntu 22.04 only
+# - Maintained compatibility with Ubuntu 20.04 (PHP 8.2)
 ########################################################
 
-absolutepath=/home/ari
-installtoserver=coin-setup
-daemonname=coinbuild
-TAGS=v2.3.8
-btcdon=bc1qt8g9l6agk7qrzlztzuz7quwhgr3zlu4gc5qcuk
-ltcdon=MGyth7od68xVqYnRdHQYes22fZW2b6h3aj
-ethdon=0xc4e42e92ef8a196eef7cc49456c786a41d7daa01
-bchdon=bitcoincash:qp9ltentq3rdcwlhxtn8cc2rr49ft5zwdv7k7e04df
+absolutepath=absolutepathserver
+installtoserver=installpath
+daemonname=daemonnameserver
+TAGS=versiontag
+btcdon=btcdons
+ltcdon=ltcdons
+ethdon=ethdons
+bchdon=bchdons
 
 ARCHITECTURE=$(uname -m)
 
@@ -360,6 +360,8 @@ function get_default_privateip {
 function term_art_server {
     if [[ "${DISTRO}" == "22" ]]; then
         PHPINSTALL=8.3
+    elif [[ "${DISTRO}" == "20" ]]; then
+        PHPINSTALL=8.2
     else
         PHPINSTALL=7.3
     fi
@@ -390,6 +392,7 @@ function install_end_message {
     echo -e "$CYAN  -------------------------------------------------------------------------------------		$COL_RESET"
     echo -e "$YELLOW   Your pool  at :$CYAN http://"$server_name"							$COL_RESET"
     echo -e "$YELLOW   Admin area at :$CYAN http://"$server_name"/site/$admin_panel					$COL_RESET"
+    echo -e "$YELLOW   Admin login  :$CYAN ${ADMIN_UI_USER} / ${ADMIN_UI_PASS} $COL_RESET"
     echo -e "$YELLOW   phpMyAdmin at :$CYAN http://"$server_name"/phpmyadmin					$COL_RESET"
     echo -e "$CYAN  -------------------------------------------------------------------------------------		$COL_RESET"
     echo -e "$YELLOW   If you want change $RED$admin_panel								$COL_RESET"

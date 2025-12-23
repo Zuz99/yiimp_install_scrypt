@@ -35,7 +35,6 @@ function yaamp_get_algos()
 		'dedal',
 		'deep',
 		'equihash',
-		'flex',
 		'heavyhash',
 		'hmq1725',
 		'honeycomb',

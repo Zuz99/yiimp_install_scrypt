@@ -1,11 +1,11 @@
 #!/bin/bash
 #################################################################################
 # Author: Vaudois
-# Modified : Zuz99
+#
 # Program:
-#   Install yiimp on Ubuntu 22.04 running Nginx, MariaDB, and PHP 8.3
+#   Install yiimp on Ubuntu 20.04 & 22.04 running Nginx, MariaDB, and PHP 8.2/8.3
 #   v2.3.8 beta(for test)
-#   
+#   Modified for include ARM compatibility
 #################################################################################
 
 if [ -z "${TAG}" ]; then
@@ -13,6 +13,10 @@ if [ -z "${TAG}" ]; then
 fi
 
 NPROC=$(nproc)
+
+# Script directory (for local yiimp.zip support)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 
 clear
 
@@ -27,9 +31,13 @@ clear
     githubrepoAfinielTech=https://github.com/Afiniel-tech/yiimp.git
     githubrepoAfiniel=https://github.com/afiniel/yiimp.git
     githubrepoSabiasQue=https://github.com/SabiasQueSpace/yiimp.git
+    githubrepoTpfuemp=https://github.com/tpfuemp/yiimp.git
+
+    # Custom / project repo
     githubrepoZuz99=https://github.com/Zuz99/yiimp.git
+
     
-    githubstratum=https://github.com/Zuz99/stratum.git
+    githubstratum=https://github.com/vaudois/stratum.git
 
     echo "Starting installer..."
     
@@ -148,6 +156,10 @@ clear
     sudo chgrp ${whoami} /var/log/yiimp
     sudo chown ${whoami} /var/log/yiimp
     sudo touch /var/log/yiimp/debug.log
+    sudo chown -R www-data:www-data /var/log/yiimp
+    sudo chmod -R 775 /var/log/yiimp
+    sudo chmod 664 /var/log/yiimp/debug.log
+
     sudo chgrp www-data /var/log/yiimp -R
     sudo chmod 775 /var/log/yiimp -R
 
@@ -211,20 +223,21 @@ clear
 		echo -e "${GREEN}  3. Afiniel-Tech                    ${COL_RESET}"
 		echo -e "${GREEN}  4. Afiniel                         ${COL_RESET}"
 		echo -e "${GREEN}  5. SabiasQue                       ${COL_RESET}"
-		echo -e "${GREEN}  6. Zuz99 (default)               ${COL_RESET}"
+		echo -e "${GREEN}  6. Tpfuemp               ${COL_RESET}"
+		echo -e "${GREEN}  7. Zuz99 (default)							${COL_RESET}"
 		echo -e "${CYAN}======================================${COL_RESET}"
 
 		while true; do
-			echo -en "${YELLOW}Enter your choice (1-6) [6 by default]: ${COL_RESET}"
+			echo -en "${YELLOW}Enter your choice (1-7) [7 by default]: ${COL_RESET}"
 			read yiimpver
 			# Set default to 6 if empty
-			yiimpver=${yiimpver:-6}
-			# Check if input is a number between 1 and 6
-			if [[ "$yiimpver" =~ ^[1-6]$ ]]; then
+			yiimpver=${yiimpver:-7}
+			# Check if input is a number between 1 and 7
+			if [[ "$yiimpver" =~ ^[1-7]$ ]]; then
 				break
 			else
 				echo -e "${RED}--------------------------------------${COL_RESET}"
-				echo -e "${RED}Error: Please enter a number between 1 and 6.${COL_RESET}"
+				echo -e "${RED}Error: Please enter a number between 1 and 7.${COL_RESET}"
 				echo -e "${RED}--------------------------------------${COL_RESET}"
 			fi
 		done
@@ -233,10 +246,10 @@ clear
 
         clear
         term_art_server
-        if [[ ("$yiimpver" -gt "6" || "$yiimpver" -lt "1") ]]; then
+        if [[ ("$yiimpver" -gt "7" || "$yiimpver" -lt "1") ]]; then
             echo ""
             echo ""
-            echo -e "$RED  SELECTED $yiimpver it is not correct you have to choose between 1 to 6 !!!!...$COL_RESET"
+            echo -e "$RED  SELECTED $yiimpver it is not correct you have to choose between 1 to 7 !!!!...$COL_RESET"
             echo -e "$YELLOW  RESTARTING your install again... $COL_RESET"
             echo ""
             sleep 7
@@ -325,27 +338,21 @@ clear
             log_message "Removed Apache"
         fi
 
+
         apt_install nginx
 
-		# === Added: remove default Nginx site (avoid default welcome page) ===
-		if [ -L /etc/nginx/sites-enabled/default ] || [ -f /etc/nginx/sites-enabled/default ]; then
-			hide_output "Disabling default Nginx site..." sudo rm -f /etc/nginx/sites-enabled/default
-		fi
-
-		if [ -f /etc/nginx/sites-available/default ]; then
-			hide_output "Removing default Nginx vhost file..." sudo rm -f /etc/nginx/sites-available/default
-		fi
-
-		if [ -d /etc/nginx/conf.d ]; then
-			hide_output "Cleaning conf.d default files..." sudo rm -f /etc/nginx/conf.d/default*.conf
-		fi
-		# === End added block ===
-
-		# Remove /etc/nginx/repos-enabled/default.conf if it exists
-
-		if [ -f /etc/nginx/repos-enabled/default.conf ]; then
-			hide_output "Removing default configuration file..." sudo rm -f /etc/nginx/repos-enabled/default.conf
-		fi
+		# Remove the default nginx vhost shipped by the package (Ubuntu/Debian)
+		# This avoids conflicts with the Yiimp vhost we generate later.
+		for f in \
+			/etc/nginx/sites-enabled/default \
+			/etc/nginx/sites-available/default \
+			/etc/nginx/sites-enabled/default.conf \
+			/etc/nginx/sites-available/default.conf \
+			/etc/nginx/conf.d/default.conf; do
+			if [ -e "$f" ]; then
+				hide_output "Removing nginx default site: $f" sudo rm -f "$f"
+			fi
+		done
 
 		# Manage nginx.service
 		if systemctl is-active --quiet nginx.service; then
@@ -422,34 +429,26 @@ clear
 			simple_hide_output "Updating apt..." apt -y update
 			log_message "Added ondrej/php PPA"
 		fi
-        echo -e "$YELLOW >--> Installing php...$COL_RESET"
-        if [[ "$DISTRO" == "20" ]]; then
-            simple_hide_output "Installing php8.2 step 1" apt install -y php8.2-fpm php8.2-opcache php8.2 php8.2-common php8.2-gd php8.2-mysql php8.2-imap php8.2-cli
-            simple_hide_output "Installing php8.2 step 2" apt install -y php8.2-cgi php8.2-curl php8.2-intl php8.2-pspell
-            simple_hide_output "Installing php8.2 step 3" apt install -y php8.2-sqlite3 php8.2-tidy php8.2-xml php8.2-zip
-            simple_hide_output "Installing php8.2 step 4" apt install -y php8.2-mbstring php8.2-memcache php8.2-memcached memcached php-memcache php-memcached
-			sudo phpenmod -v 8.2 mbstring
-			sudo phpenmod -v 8.2 memcache memcached
-            simple_hide_output "Installing php8.2 gettext" apt install -y php8.2-gettext
-			simple_hide_output "Update alternatives php8.2" update-alternatives --set php /usr/bin/php8.2
-            simple_hide_output "Restart php8.2" systemctl start php8.2-fpm
-            sudo systemctl status php8.2-fpm | sed -n "1,3p"
-            PHPVERSION=8.2
-            log_message "Installed PHP 8.2 and dependencies"
-        elif [[ "$DISTRO" == "22" ]]; then
-            simple_hide_output "Installing php8.2 step 1" apt install -y php8.2-fpm php8.2-opcache php8.2 php8.2-common php8.2-gd php8.2-mysql php8.2-imap php8.2-cli
-            simple_hide_output "Installing php8.2 step 2" apt install -y php8.2-cgi php8.2-curl php8.2-intl php8.2-pspell
-            simple_hide_output "Installing php8.2 step 3" apt install -y php8.2-sqlite3 php8.2-tidy php8.2-xml php8.2-zip
-            simple_hide_output "Installing php8.2 step 4" apt install -y php8.2-mbstring php8.2-memcache php8.2-memcached memcached php-memcache php-memcached
-			sudo phpenmod -v 8.2 mbstring
-			sudo phpenmod -v 8.2 memcache memcached
-            simple_hide_output "Installing php8.2 gettext" apt install -y php8.2-gettext
-			simple_hide_output "Update alternatives php8.2" update-alternatives --set php /usr/bin/php8.2
-            simple_hide_output "Restart php8.2" systemctl start php8.2-fpm
-            sudo systemctl status php8.2-fpm | sed -n "1,3p"
-            PHPVERSION=8.2
-            log_message "Installed PHP 8.2 and dependencies"
-        fi
+        echo -e "$YELLOW >--> Installing PHP 8.2...$COL_RESET"
+        # Always use PHP 8.2 on Ubuntu 20.04/22.04 for Yiimp compatibility
+        PHPVERSION=8.2
+
+        simple_hide_output "Installing PHP 8.2 packages" apt install -y \
+            php8.2-fpm php8.2-cli php8.2-common php8.2-opcache php8.2-gd php8.2-mysql \
+            php8.2-curl php8.2-intl php8.2-mbstring php8.2-xml php8.2-zip php8.2-bcmath \
+            php8.2-imap php8.2-pspell php8.2-tidy php8.2-sqlite3 php8.2-gettext \
+            php8.2-memcache php8.2-memcached memcached php-memcache php-memcached
+
+        sudo phpenmod -v 8.2 mbstring || true
+        sudo phpenmod -v 8.2 memcache memcached || true
+
+        # Disable PHP 8.3 if it was pulled in by the PPA
+        sudo systemctl disable --now php8.3-fpm >/dev/null 2>&1 || true
+
+        simple_hide_output "Update alternatives php8.2" update-alternatives --set php /usr/bin/php8.2
+        simple_hide_output "Restart php8.2" systemctl enable --now php8.2-fpm
+        sudo systemctl status php8.2-fpm | sed -n "1,3p"
+        log_message "Installed PHP 8.2 and dependencies"
 
         sleep 5
         echo -e "$GREEN Done...$COL_RESET"
@@ -457,11 +456,7 @@ clear
         # Fix CDbConnection failed to open the DB connection.
         echo
         echo -e "$CYAN => Fixing DBconnection issue $COL_RESET"
-        if [[ "$DISTRO" == "20" ]]; then
-            apt_install php8.2-mysql
-        elif [[ "$DISTRO" == "22" ]]; then
-            apt_install php8.3-mysql
-        fi
+        apt_install php8.2-mysql
 		if systemctl is-active --quiet nginx.service; then
 			hide_output "Restarting nginx..." sudo systemctl restart nginx.service
 		else
@@ -565,32 +560,40 @@ clear
 
         # Generating Random Password for stratum
         blckntifypass=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-		
-        # Download Version of Yiimp and stratum
+
+        # Admin UI credentials (used by /admin login)
+        ADMIN_UI_USER="admin"
+        ADMIN_UI_PASS=$(cat /dev/urandom | tr -dc "a-zA-Z0-9" | fold -w 32 | head -n 1)
+
+
+        # Download Yiimp source (Option B: always clone from GitHub)
         cd ~
+        sudo rm -rf ${absolutepath}/yiimp >/dev/null 2>&1
+
+        # Always clone from GitHub (default is Zuz99 = option 7)
         if [[ ("$yiimpver" == "1" || "$yiimpver" == "") ]]; then
-            hide_output "Clone Yiimp seletcted 1" sudo git clone $githubrepoKudaraidee
+            hide_output "Clone Yiimp selected 1" sudo git clone --recurse-submodules $githubrepoKudaraidee ${absolutepath}/yiimp
         elif [[ "$yiimpver" == "2" ]]; then
-            hide_output "Clone Yiimp seletcted 2" sudo git clone $githubyiimptpruvot
+            hide_output "Clone Yiimp selected 2" sudo git clone --recurse-submodules $githubyiimptpruvot ${absolutepath}/yiimp
         elif [[ "$yiimpver" == "3" ]]; then
-            hide_output "Clone Yiimp seletcted 3" sudo git clone $githubrepoAfinielTech
+            hide_output "Clone Yiimp selected 3" sudo git clone --recurse-submodules $githubrepoAfinielTech ${absolutepath}/yiimp
         elif [[ "$yiimpver" == "4" ]]; then
-            hide_output "Clone Yiimp seletcted 4" sudo git clone $githubrepoAfiniel -b next
+            hide_output "Clone Yiimp selected 4" sudo git clone --recurse-submodules $githubrepoAfiniel -b next ${absolutepath}/yiimp
         elif [[ "$yiimpver" == "5" ]]; then
-            hide_output "Clone Yiimp seletcted 5" sudo git clone $githubrepoSabiasQue
+            hide_output "Clone Yiimp selected 5" sudo git clone --recurse-submodules $githubrepoSabiasQue ${absolutepath}/yiimp
         elif [[ "$yiimpver" == "6" ]]; then
-            hide_output "Clone Yiimp seletcted 6" sudo git clone $githubrepoZuz99
+            hide_output "Clone Yiimp selected 6" sudo git clone --recurse-submodules $githubrepoTpfuemp ${absolutepath}/yiimp
         else
-            hide_output "Clone Default Yiimp" sudo git clone $githubrepoZuz99
+            hide_output "Clone Yiimp selected 7 (Zuz99)" sudo git clone --recurse-submodules $githubrepoZuz99 ${absolutepath}/yiimp
         fi
+        sudo git -C ${absolutepath}/yiimp submodule update --init --recursive >/dev/null 2>&1 || true
 
         clear
         term_art_server
-        hide_output "Clone Default Yiimp" sudo git clone $githubstratum
-        log_message "Cloned Yiimp and stratum repositories"
+        log_message "Fetched Yiimp source (git clone)"
 
         # Compile Blocknotify
-        cd ${absolutepath}/stratum/blocknotify
+        cd ${absolutepath}/yiimp/blocknotify
         sudo sed -i 's/tu8tu5/'$blckntifypass'/' blocknotify.cpp
         hide_output "Compile Blocknotify" sudo make
         log_message "Compiled blocknotify"
@@ -602,53 +605,36 @@ clear
         log_message "Compiled iniparser"
         sleep 1
 
-		# Compile Stratum
-		cd ${absolutepath}/yiimp/stratum
-		hide_output git submodule init && git submodule update
-		if [[ ("$BTC" == "y" || "$BTC" == "Y") ]]; then
-		sudo sed -i 's/CFLAGS += -DNO_EXCHANGE/#CFLAGS += -DNO_EXCHANGE/' $HOME/yiimp/stratum/Makefile
-		fi
-		hide_output make all -j$((`nproc`+1))
+        # Compile Stratum
+        cd ${absolutepath}/yiimp/stratum
 
-    hide_output sudo update-alternatives --set gcc /usr/bin/gcc-11 
-    hide_output sudo update-alternatives --set g++ /usr/bin/g++-11 
+        ARCH=$(dpkg --print-architecture)
+        STRCOMPILED="N"
 
-		# Detection system
-		ARCH=$(dpkg --print-architecture)
-		STRCOMPILED="N"
-		STRDEFAULT="N"
-		STRCPUARM="N"
-		if [ "$ARCH" = "arm64" ]; then
-			sudo chmod +x ${absolutepath}/${nameofinstall}/utils/stratum_arm.sh
-			source ${absolutepath}/${nameofinstall}/utils/stratum_arm.sh ${absolutepath}/yiimp/stratum/
-			if [[ $STRCOMPILED == "N" ]]; then
-				echo
-				echo -e "$RED => Error Stratum not compiled $COL_RESET"
-				echo -e "$CYAN => Try again With default Stratum $COL_RESET"
-				echo
-				sleep 3
-				log_message "ERROR Compilation of Straum try again by default"
-				source ${absolutepath}/${nameofinstall}/utils/stratum_arm.sh ${absolutepath}/stratum/
-				STRDEFAULT="Y"
-			fi
-			if [[ $STRCOMPILED == "N" ]]; then
-				echo
-				echo -e "$RED => Error Default Stratum not compiled BAD ....$COL_RESET"
-				echo
-				log_message "ERROR Compilation of Straum"
-				sleep 3
-			fi
-			if [[ $STRCOMPILED == "Y" ]]; then
-				echo -e "$GREEN => Stratum compiled $COL_RESET"
-				log_message "Compiled Straum"
-			fi
-			STRCPUARM="Y"
-		else
-			cd ${absolutepath}/yiimp/stratum
-			sudo make
-		fi
-		sleep 3
+        if [ "$ARCH" = "arm64" ]; then
+            # ARM build helper
+            sudo chmod +x ${absolutepath}/${nameofinstall}/utils/stratum_arm.sh
+            source ${absolutepath}/${nameofinstall}/utils/stratum_arm.sh ${absolutepath}/yiimp/stratum/
+            if [[ "$STRCOMPILED" != "Y" ]]; then
+                echo -e "$RED => Error: Stratum not compiled on ARM64 $COL_RESET"
+                log_message "ERROR: Stratum compilation failed on ARM64"
+                exit 1
+            fi
+        else
+            # Build everything in one go (avoid race conditions)
+            sudo env MAKEFLAGS= make all
+            STRCOMPILED="Y"
+        fi
 
+        if [[ "$STRCOMPILED" == "Y" ]]; then
+            echo -e "$GREEN => Stratum compiled $COL_RESET"
+            log_message "Compiled Stratum"
+        else
+            echo -e "$RED => Error: Stratum build failed $COL_RESET"
+            log_message "ERROR: Stratum build failed"
+            exit 1
+        fi
+        sleep 3
         clear
         term_art_server
 		# Modify Files (Admin_panel), Wallets path, Web Path footer
@@ -696,53 +682,33 @@ clear
 
         cd ${absolutepath}/yiimp
         sudo cp -r ${absolutepath}/yiimp/web/ /var/
+
+		# Copy Yiimp bin scripts to YAAMP_BIN (/var/bin)
+		sudo mkdir -p /var/bin
+		sudo cp -a ${absolutepath}/yiimp/bin/. /var/bin/
+		sudo chmod -R 755 /var/bin
+		sudo sed -i "s|ROOTDIR=/data/yiimp|ROOTDIR=/var|g" /var/bin/yiimp >/dev/null 2>&1 || true
+		log_message "Copied yiimp/bin to /var/bin"
+
         sudo mkdir -p /var/stratum
         sudo chgrp ${whoami} /var/stratum
         sudo chown ${whoami} /var/stratum
 
-		if [[ $STRCPUARM == "Y" ]]; then
-			if [[ $STRCOMPILED == "Y" ]]; then
-				if [[ $STRDEFAULT == "Y" ]]; then
-					cd ${absolutepath}/stratum
-					sudo cp -a config.sample/. /var/stratum/config/
-					if [[ -f stratum ]]; then
-						sudo cp -r stratum /var/stratum/
-						log_message "Copied stratum directory to /var/stratum/"
-						echo -e "$YELLOW => Copied Default Stratum $COL_RESET"
-					else
-						echo -e "$RED => Not Possible to copy Default Stratum...$COL_RESET"
-					fi
-				else
-					cd ${absolutepath}/yiimp/stratum
-					sudo cp -a config.sample/. /var/stratum/config/
-					if [[ -f stratum ]]; then
-						sudo cp -r stratum /var/stratum/
-						log_message "Copied stratum directory to /var/stratum/"
-						echo -e "$YELLOW => Copied Stratum $COL_RESET"
-					else
-						echo -e "$RED => Not Possible to copy Stratum...$COL_RESET"
-					fi
-				fi
-			else
-				cd ${absolutepath}/yiimp/stratum
-				sudo cp -a config.sample/. /var/stratum/config/
-				echo -e "$RED => Not copied Stratum this is not compiled BAD....$COL_RESET"
-			fi
+		# Copy Stratum runtime (binary + config only)
+		cd ${absolutepath}/yiimp/stratum
+		sudo mkdir -p /var/stratum/config
+		sudo cp -a config.sample/. /var/stratum/config/
+		if [[ -f stratum ]]; then
+			sudo cp -f stratum /var/stratum/
+			log_message "Copied stratum binary to /var/stratum/"
+			echo -e "$YELLOW => Copied Stratum (binary only) $COL_RESET"
 		else
-			cd ${absolutepath}/yiimp/stratum
-			if [[ -f stratum ]]; then
-				sudo cp -r stratum /var/stratum/
-				log_message "Copied stratum directory to /var/stratum/"
-				echo -e "$YELLOW => Copied Stratum $COL_RESET"
-			else
-				echo -e "$RED => Not Possible to copy Stratum...$COL_RESET"
-			fi
-				sudo cp -a config.sample/. /var/stratum/config/
+			echo -e "$RED => Stratum binary not found. Build failed. $COL_RESET"
+			log_message "ERROR: Stratum binary not found"
 		fi
-
         cd ${absolutepath}/yiimp
-        sudo cp -r ${absolutepath}/stratum/blocknotify/blocknotify /usr/bin/
-        sudo cp -r ${absolutepath}/stratum/blocknotify/blocknotify /var/stratum/
+        sudo cp -r ${absolutepath}/yiimp/blocknotify/blocknotify /usr/bin/
+        sudo cp -r ${absolutepath}/yiimp/blocknotify/blocknotify /var/stratum/
         sudo mkdir -p /etc/yiimp
         sudo chgrp ${whoami} /etc/yiimp
         sudo chown ${whoami} /etc/yiimp
@@ -809,13 +775,12 @@ clear
 
         nginxcustomconf "${server_name}" "${PHPVERSION}"
 
-        # Adding user to group, creating dir structure, setting permissions
-        sudo mkdir -p /var/www/$server_name/html
+        # Yiimp web is deployed to /var/web (no per-domain document root directory required)
 
         if [[ ("$sub_domain" == "n" || "$sub_domain" == "N") ]]; then
             confnginxnotssl "${server_name}" "${PHPVERSION}"
             sudo ln -s /etc/nginx/sites-available/$server_name.conf /etc/nginx/sites-enabled/$server_name.conf
-            sudo ln -s /var/web /var/www/$server_name/html
+            # (no /var/www symlink needed)
 			if systemctl is-active --quiet nginx.service; then
 				hide_output "Restarting nginx..." sudo systemctl restart nginx.service
 			else
@@ -854,7 +819,7 @@ clear
         else
             confnginxnotsslsub "${server_name}" "${sub_domain}" "${PHPVERSION}"
             sudo ln -s /etc/nginx/sites-available/$server_name.conf /etc/nginx/sites-enabled/$server_name.conf
-            sudo ln -s /var/web /var/www/$server_name/html
+            # (no /var/www symlink needed)
 			if systemctl is-active --quiet nginx.service; then
 				hide_output "Restarting nginx..." sudo systemctl restart nginx.service
 			else
@@ -940,73 +905,59 @@ clear
         echo -e "$CYAN => Database 'yiimpfrontend' and users 'panel' and 'stratum' created with password $password and $password2, will be saved for you $COL_RESET"
         sleep 3
 
-        cd ~
-        cd ${absolutepath}/${nameofinstall}/conf/db
-        
-        if [[ "$DISTRO" == "20" ]]; then
-            sudo zcat 2024-03-06-complete_export.sql.gz | sudo mysql -u root -p=${rootpasswd} yiimpfrontend
-            if [[ "$yiimpver" == "5" ]]; then
-                echo -e "$YELLOW => Selected install $yiimpver more sql adding... $COL_RESET"
-                sleep 5
-                sudo mysql -u root -p=${rootpasswd} yiimpfrontend --force < 28-05-2023-articles.sql
-                sudo mysql -u root -p=${rootpasswd} yiimpfrontend --force < 28-05-2023-article_ratings.sql
-                sudo mysql -u root -p=${rootpasswd} yiimpfrontend --force < 28-05-2023-article_comments.sql
-                sudo mysql -u root -p=${rootpasswd} yiimpfrontend --force < 2023-02-20-coins.sql
-		sudo mysql -u root -p=${rootpasswd} yiimpfrontend < 2024-03-18-add_aurum_algo.sql
-                sudo mysql -u root -p=${rootpasswd} yiimpfrontend < 2024-03-29-add_github_version.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-03-31-add_payout_threshold.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-01-add_auto_exchange.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-01-shares_blocknumber.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-05-algos_port_color.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-22-add_equihash_algos.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-23-add_pers_string.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-29-add_sellthreshold.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-05-04-add_neoscrypt_xaya_algo.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-02-06-add_usemweb.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-02-13-add_xelisv2-pepew.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-02-23-add_algo_kawpow.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-03-31-rename_table_exchange.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-05-add_argon2d1000.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-07-add_yespowerADVC.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-27-add_flex.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-27-add_rinhash.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-28-add_algo_phihash.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-11-19-add_algo_meowpow.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-12-16-add_algo_soterg.sql
+                # Import SQL from Yiimp project (sql/ folder)
+        # - Prefer newest *complete_export* as base (supports .sql.gz OR .sql)
+        # - Then apply every other *.sql in sql/ (sorted)
+        # - Also apply *.sql from sql/archived/ (sorted) to match "import all SQL shipped with the project"
+        SQL_DIR="${absolutepath}/yiimp/sql"
 
-            fi
+        if [[ ! -d "$SQL_DIR" ]]; then
+            echo -e "$RED => SQL folder not found: $SQL_DIR $COL_RESET"
+            log_message "ERROR: SQL folder not found: $SQL_DIR"
         else
-            sudo zcat 2024-03-06-complete_export.sql.gz | sudo mysql -u root -p=${rootpasswd} yiimpfrontend
-            if [[ "$yiimpver" == "5" ]]; then
-                echo -e "$YELLOW => Selected install $yiimpver more sql adding... $COL_RESET"
-                sleep 5
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-03-18-add_aurum_algo.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-03-29-add_github_version.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-03-31-add_payout_threshold.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-01-add_auto_exchange.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-01-shares_blocknumber.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-05-algos_port_color.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-22-add_equihash_algos.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-23-add_pers_string.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-04-29-add_sellthreshold.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2024-05-04-add_neoscrypt_xaya_algo.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-02-06-add_usemweb.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-02-13-add_xelisv2-pepew.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-02-23-add_algo_kawpow.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-03-31-rename_table_exchange.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-05-add_argon2d1000.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-07-add_yespowerADVC.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-27-add_flex.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-27-add_rinhash.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-10-28-add_algo_phihash.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-11-19-add_algo_meowpow.sql
-                sudo mysql --defaults-group-suffix=host1 --force < 2025-12-16-add_algo_soterg.sql
+            # Base dump: prefer complete export if present (supports .sql.gz and .sql)
+            BASE_DUMP_GZ="$(ls -1 "${SQL_DIR}"/*complete_export*.sql.gz 2>/dev/null | sort | tail -n 1)"
+            BASE_DUMP_SQL="$(ls -1 "${SQL_DIR}"/*.sql    2>/dev/null | sort | tail -n 1)"
+
+            if [[ -n "$BASE_DUMP_GZ" ]]; then
+                echo -e "$CYAN => Import base dump (gz): $(basename "$BASE_DUMP_GZ") $COL_RESET"
+                sudo zcat "$BASE_DUMP_GZ" | sudo mysql -u root -p"${rootpasswd}" yiimpfrontend --force
+            elif [[ -n "$BASE_DUMP_SQL" ]]; then
+                echo -e "$CYAN => Import base dump (sql): $(basename "$BASE_DUMP_SQL") $COL_RESET"
+                sudo mysql -u root -p"${rootpasswd}" yiimpfrontend --force < "$BASE_DUMP_SQL"
+            else
+                # Fallback: newest .sql.gz or .sql if no *complete_export* naming exists
+                ANY_GZ="$(ls -1 "${SQL_DIR}"/*.sql.gz 2>/dev/null | sort | tail -n 1)"
+                ANY_SQL="$(ls -1 "${SQL_DIR}"/*.sql    2>/dev/null | sort | tail -n 1)"
+
+                if [[ -n "$ANY_GZ" ]]; then
+                    echo -e "$CYAN => Import base dump (gz): $(basename "$ANY_GZ") $COL_RESET"
+                    sudo zcat "$ANY_GZ" | sudo mysql -u root -p"${rootpasswd}" yiimpfrontend --force
+                elif [[ -n "$ANY_SQL" ]]; then
+                    echo -e "$CYAN => Import base dump (sql): $(basename "$ANY_SQL") $COL_RESET"
+                    sudo mysql -u root -p"${rootpasswd}" yiimpfrontend --force < "$ANY_SQL"
+                else
+                    echo -e "$YELLOW => No base dump found in $SQL_DIR, applying *.sql only $COL_RESET"
+                fi
+            fi
+
+            # Apply every *.sql in yiimp/sql (sorted), excluding complete_export to avoid double import
+            while IFS= read -r f; do
+                echo -e "$CYAN => Apply SQL: $(basename "$f") $COL_RESET"
+                sudo mysql -u root -p"${rootpasswd}" yiimpfrontend --force < "$f"
+            done < <(find "$SQL_DIR" -maxdepth 1 -type f -name "*.sql" ! -name "*complete_export*.sql" | sort)
+
+            # Apply archived migrations too (if present)
+            if [[ -d "${SQL_DIR}/archived" ]]; then
+                while IFS= read -r f; do
+                    echo -e "$CYAN => Apply archived SQL: $(basename "$f") $COL_RESET"
+                    sudo mysql -u root -p"${rootpasswd}" yiimpfrontend --force < "$f"
+                done < <(find "${SQL_DIR}/archived" -maxdepth 1 -type f -name "*.sql" | sort)
             fi
         fi
         log_message "Imported Yiimp SQL database"
         cd ~
-
-        echo -e "$GREEN Done...$COL_RESET"
+echo -e "$GREEN Done...$COL_RESET"
 
         # Generating a basic Yiimp serverconfig.php
         echo
@@ -1014,7 +965,7 @@ clear
         sleep 3
 
         # Make config file
-        getserverconfig "${password}" "${server_name}" "${EMAIL}" "${Public}" "${admin_panel}"
+        getserverconfig "${password}" "${server_name}" "${EMAIL}" "${Public}"
 
         if [[ "$yiimpver" == "5" ]]; then
             addmoreserverconfig5
@@ -1084,6 +1035,27 @@ clear
     echo -e "$CYAN => Installing CoinBuild $COL_RESET"
     sleep 3
 
+    # Ensure CoinBuild log is writable (prevents redirection permission errors)
+    # NOTE: redirections (>>, 2>>) are opened by the *current shell user* before sudo runs.
+    # So we must guarantee the log path is traversable and the file is user-writable.
+    RUN_USER="${SUDO_USER:-$USER}"
+    RUN_GROUP="$(id -gn "$RUN_USER" 2>/dev/null || echo "$RUN_USER")"
+
+    COINBUILD_LOG="/var/log/yiimp/coinbuild_error.log"
+    sudo mkdir -p "$(dirname "$COINBUILD_LOG")" >/dev/null 2>&1
+    # make sure directory is traversable by the user (some systems create it 700)
+    sudo chmod 755 "$(dirname "$COINBUILD_LOG")" >/dev/null 2>&1 || true
+    sudo touch "$COINBUILD_LOG" >/dev/null 2>&1
+    sudo chown "$RUN_USER:$RUN_GROUP" "$COINBUILD_LOG" >/dev/null 2>&1
+    sudo chmod 664 "$COINBUILD_LOG" >/dev/null 2>&1
+
+    # Fallback to a user-owned log if /var/log is still not writable/traversable for some reason
+    if ! sudo -u "$RUN_USER" test -w "$COINBUILD_LOG" >/dev/null 2>&1; then
+        COINBUILD_LOG="$HOME/coinbuild_error.log"
+        touch "$COINBUILD_LOG" >/dev/null 2>&1 || true
+        chmod 664 "$COINBUILD_LOG" >/dev/null 2>&1 || true
+    fi
+
     # Trap Ctrl+C to provide resume instructions
     trap 'echo -e "$YELLOW Installation interrupted. You can resume CoinBuild installation with: ./install.sh r $COL_RESET"; sudo rm -rf "$temp_dir" 2>/dev/null; exit 1' INT
 
@@ -1094,29 +1066,46 @@ clear
     sleep 2
 
     REPO="vaudois/daemoncoin-addport-stratum"
-    LATESTVER=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | jq -r ".tag_name")
-
-    temp_dir="$(mktemp -d)"
-    sudo git clone -q git@github.com:${REPO%.git} "${temp_dir}" 2>> /var/log/yiimp/coinbuild_error.log && \
-        cd "${temp_dir}" && \
-        sudo git -c advice.detachedHead=false checkout -q tags/${LATESTVER} >> /var/log/yiimp/coinbuild_error.log 2>&1
-    if [[ $? -ne 0 ]]; then
-        echo
-        echo -e "$RED Error: Failed to clone or checkout CoinBuild repository. Check your network connection or GitHub access.$COL_RESET"
-        echo -e "$YELLOW You can resume the installation by running: ./install.sh r $COL_RESET"
-        sudo rm -rf "$temp_dir"
-        log_message "Failed to clone CoinBuild repository"
-        sleep 3
+    # Best-effort: use latest release tag if it exists, otherwise keep default branch.
+    LATESTVER=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | jq -r ".tag_name" 2>/dev/null)
+    if [[ -z "$LATESTVER" || "$LATESTVER" == "null" ]]; then
+        LATESTVER=""
     fi
 
-    FILEINSTALLEXIST="${temp_dir}/install.sh"
-    if [[ -f "$FILEINSTALLEXIST" ]]; then
-        sudo chown -R "$USER" "${temp_dir}" >/dev/null 2>&1
-        sleep 1
-        cd "${temp_dir}"
-        sudo find . -type f -name "*.sh" -exec chmod -R +x {} \; >/dev/null 2>&1
-        sleep 1
-        if ! ./install.sh "${temp_dir}" "${STRATUMFILE}" "${DISTRO}" >> /var/log/yiimp/coinbuild_error.log 2>&1; then
+    temp_dir="$(mktemp -d)"
+	# Use HTTPS clone (no SSH keys required)
+	if ! sudo git clone -q "https://github.com/${REPO%.git}.git" "${temp_dir}" 2>> "$COINBUILD_LOG"; then
+		echo
+		echo -e "$RED Error: Failed to clone CoinBuild repository. Check your network connection or GitHub access.$COL_RESET"
+		echo -e "$YELLOW You can resume the installation by running: ./install.sh r $COL_RESET"
+		sudo rm -rf "$temp_dir"
+		log_message "Failed to clone CoinBuild repository"
+		# Stop here to avoid misleading follow-up errors (e.g. "install.sh not found")
+		trap - INT
+		exit 1
+	fi
+
+    # Checkout latest tag if available
+    if [[ -n "$LATESTVER" && -d "$temp_dir/.git" ]]; then
+        if ! (cd "${temp_dir}" && sudo git -c advice.detachedHead=false checkout -q "tags/${LATESTVER}" >> "$COINBUILD_LOG" 2>&1); then
+            echo -e "$YELLOW Warning: Could not checkout tag ${LATESTVER}, continuing with default branch.$COL_RESET"
+            log_message "WARN: CoinBuild tag checkout failed (${LATESTVER}); using default branch"
+        fi
+    fi
+
+	# Some forks moved the installer script; try to locate it if not at repo root.
+	FILEINSTALLEXIST="${temp_dir}/install.sh"
+	if [[ ! -f "$FILEINSTALLEXIST" ]]; then
+		FILEINSTALLEXIST="$(find "${temp_dir}" -maxdepth 3 -type f -name 'install.sh' 2>/dev/null | head -n 1)"
+	fi
+
+	if [[ -n "$FILEINSTALLEXIST" && -f "$FILEINSTALLEXIST" ]]; then
+		sudo chown -R "$USER" "${temp_dir}" >/dev/null 2>&1
+		sleep 1
+		cd "$(dirname "$FILEINSTALLEXIST")"
+		sudo find "${temp_dir}" -type f -name "*.sh" -exec chmod -R +x {} \; >/dev/null 2>&1
+		sleep 1
+		if ! "./$(basename "$FILEINSTALLEXIST")" "${temp_dir}" "${STRATUMFILE}" "${DISTRO}" >> "$COINBUILD_LOG" 2>&1; then
             echo
             echo -e "$RED Error: CoinBuild installation failed.$COL_RESET"
             echo -e "$YELLOW You can resume the installation by running: ./install.sh r $COL_RESET"
@@ -1130,6 +1119,9 @@ clear
         echo
         echo -e "$RED Error: CoinBuild install.sh not found in repository.$COL_RESET"
         echo -e "$YELLOW You can resume the installation by running: ./install.sh r $COL_RESET"
+		echo -e "$YELLOW Debug: listing repo root saved to $COINBUILD_LOG $COL_RESET"
+		(ls -lah "${temp_dir}" 2>/dev/null || true) >> "$COINBUILD_LOG" 2>&1
+		(find "${temp_dir}" -maxdepth 2 -type f -name "*.sh" 2>/dev/null || true) >> "$COINBUILD_LOG" 2>&1
         sudo rm -rf "$temp_dir"
         log_message "CoinBuild install.sh not found"
         sleep 3
@@ -1282,24 +1274,14 @@ clear
     # Misc
     log_message "Starting miscellaneous cleanup and service configuration"
 
-	cd ${absolutepath}/yiimp/stratum
-	sudo make clean
-	if [[ -f ${absolutepath}/yiimp/stratum/install.log ]]; then
-		sudo rm ${absolutepath}/yiimp/stratum/install.log
+	# Keep Yiimp source tree (matches project structure) for future updates/rebuilds
+	if [[ -d ${absolutepath}/yiimp/stratum ]]; then
+		(cd ${absolutepath}/yiimp/stratum && sudo make clean >/dev/null 2>&1 || true)
+		if [[ -f ${absolutepath}/yiimp/stratum/install.log ]]; then
+			sudo rm -f ${absolutepath}/yiimp/stratum/install.log >/dev/null 2>&1 || true
+		fi
 	fi
-	cd ${absolutepath}/stratum
-	sudo make clean
-	if [[ -f ${absolutepath}/stratum/install.log ]]; then
-		sudo rm ${absolutepath}/stratum/install.log
-	fi
-
-	sudo mv ${absolutepath}/yiimp/stratum ${absolutepath}/stratum_${yiimpver}
-	sudo chown ${whoami} ${absolutepath}/stratum_${yiimpver}
-	sudo mv ${absolutepath}/stratum ${absolutepath}/stratum_default
-	sudo chown ${whoami} ${absolutepath}/stratum_default
-    sudo rm -rf ${absolutepath}/yiimp
-    sudo rm -rf ${absolutepath}/${nameofinstall}
-    log_message "Removed temporary directories: yiimp, stratum, ${nameofinstall}"
+	log_message "Kept Yiimp source at ${absolutepath}/yiimp"
 
     # Truncate Nginx logs instead of deleting
     sudo truncate -s 0 /var/log/nginx/*.log >/dev/null 2>&1

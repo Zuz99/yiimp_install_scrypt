@@ -11,11 +11,11 @@ echo
 echo -e "$CYAN => Setting our global variables : $COL_RESET"
 echo
 
-# Définir la variable DISTRO pour Ubuntu 22.04 (22) uniquement
+# Définir la variable DISTRO pour Ubuntu 20.04 (20) ou 22.04 (22)
 if [ -z "${DISTRO:-}" ]; then
     DISTRO=$(lsb_release -r -s | cut -d '.' -f 1)
-    if [[ "$DISTRO" != "22" ]]; then
-        echo -e "$RED Error: This script supports only Ubuntu 22.04. Detected major version: $DISTRO.$COL_RESET"
+    if [[ "$DISTRO" != "20" && "$DISTRO" != "22" ]]; then
+        echo -e "$RED Error: This script supports only Ubuntu 20.04 or 22.04. Detected version: $DISTRO.$COL_RESET"
         exit 1
     fi
 fi

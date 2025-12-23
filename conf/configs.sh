@@ -44,7 +44,8 @@ server
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
     server_name '"$1"' '"$2"'.'"$1"';
-    root /var/www/'"$1"'/html/web;
+    # Yiimp default webroot deployed to /var/web
+    root /var/web;
     index index.php;
     access_log /var/log/yiimp/'"$1"'.app-access.log;
     error_log  /var/log/yiimp/'"$1"'.app-error.log;
@@ -172,7 +173,8 @@ server
     listen [::]:443 ssl http2;
     server_name '"$1"' www.'"$1"';
 
-    root /var/www/'"$1"'/html/web;
+    # Yiimp default webroot deployed to /var/web
+    root /var/web;
     index index.php;
 
     access_log /var/log/yiimp/'"$1"'.app-access.log;
@@ -284,7 +286,8 @@ server
     listen 80;
     listen [::]:80;
     server_name '"$1"' '"$2"'.'"$1"';
-    root "/var/www/'"$1"'/html/web";
+    # Yiimp default webroot deployed to /var/web
+    root "/var/web";
     index index.php;
     #charset utf-8;
 
@@ -385,7 +388,8 @@ server
     listen 80;
     listen [::]:80;
     server_name '"$1"' www.'"$1"';
-    root "/var/www/'"$1"'/html/web";
+    # Yiimp default webroot deployed to /var/web
+    root "/var/web";
     index index.html index.htm index.php;
     #charset utf-8;
     location /
@@ -507,94 +511,83 @@ gzip_types text/plain text/css text/xml application/json application/javascript 
 
 function getserverconfig
 {
-    if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" || -z "$5"  ]]; then
-        echo -e "$RED Error: Missing parameters for Yiimp serverconfig.php (password, domain, email, admin login or admin IP).$COL_RESET"
+    if [[ -z "$1" || -z "$2" || -z "$3" || -z "$4" ]]; then
+        echo -e "$RED Error: Missing parameters for Yiimp serverconfig.php (dbpass, site_url, email, admin_ip).$COL_RESET"
         exit 1
     fi
-    # Make config file
-    echo '<?php
-ini_set('"'"'date.timezone'"'"', '"'"'UTC'"'"');
-define('"'"'YAAMP_LOGS'"'"', '"'"'/var/log/yiimp'"'"');
-define('"'"'YAAMP_HTDOCS'"'"', '"'"'/var/web'"'"');
-define('"'"'YIIMP_MYSQLDUMP_PATH'"'"', '"'"''"/var/yiimp/sauv"''"'"');
-define('"'"'YIIMP_ADMIN_LOGIN'"'"', '"'"''"$5"''"'"');
-define('"'"'YAAMP_ADMIN_USER'"'"', '"'"''"$5"''"'"');
-define('"'"'YAAMP_ADMIN_PASS'"'"', '"'"''"$5"''"'"');
 
-define('"'"'YAAMP_BIN'"'"', '"'"'/var/bin'"'"');
-define('"'"'YAAMP_DBHOST'"'"', '"'"'localhost'"'"');
-define('"'"'YAAMP_DBNAME'"'"', '"'"'yiimpfrontend'"'"');
-define('"'"'YAAMP_DBUSER'"'"', '"'"'panel'"'"');
-define('"'"'YAAMP_DBPASSWORD'"'"', '"'"''"$1"''"'"');
-define('"'"'YAAMP_PRODUCTION'"'"', true);
-define('"'"'YAAMP_RENTAL'"'"', false);
-define('"'"'YAAMP_LIMIT_ESTIMATE'"'"', false);
-define('"'"'YAAMP_FEES_SOLO'"'"', 1.0);
-define('"'"'YAAMP_FEES_MINING'"'"', 0.5);
-define('"'"'YAAMP_FEES_EXCHANGE'"'"', 2);
-define('"'"'YAAMP_FEES_RENTING'"'"', 2);
-define('"'"'YAAMP_TXFEE_RENTING_WD'"'"', 0.002);
-define('"'"'YAAMP_PAYMENTS_FREQ'"'"', 2*60*60);
-define('"'"'YAAMP_PAYMENTS_MINI'"'"', 0.001);
-define('"'"'YAAMP_ALLOW_EXCHANGE'"'"', false);
-define('"'"'YIIMP_PUBLIC_EXPLORER'"'"', true);
-define('"'"'YIIMP_VOTE'"'"', true);
-define('"'"'YIIMP_PUBLIC_BENCHMARK'"'"', false);
-define('"'"'YIIMP_FIAT_ALTERNATIVE'"'"', '"'"'USD'"'"');
-define('"'"'YAAMP_USE_NICEHASH_API'"'"', false);
-define('"'"'YAAMP_BTCADDRESS'"'"', '"'"'bc1qpnxtg3dvtglrvfllfk3gslt6h5zffkf069nh8r'"'"');
-define('"'"'YAAMP_SITE_URL'"'"', '"'"''"$2"''"'"');
-define('"'"'YAAMP_STRATUM_URL'"'"', YAAMP_SITE_URL);
-define('"'"'YAAMP_SITE_NAME'"'"', '"'"'MyYiimpPool'"'"');
-define('"'"'YAAMP_ADMIN_EMAIL'"'"', '"'"''"$3"''"'"');
-define('"'"'YAAMP_ADMIN_IP'"'"', '"'"''"$4"''"'"');
-define('"'"'YAAMP_ADMIN_WEBCONSOLE'"'"', true);
-define('"'"'YAAMP_CREATE_NEW_COINS'"'"', false);
-define('"'"'YAAMP_NOTIFY_NEW_COINS'"'"', false);
-define('"'"'YAAMP_DEFAULT_ALGO'"'"', '"'"'x11'"'"');
-define('"'"'YAAMP_USE_NGINX'"'"', true);
-// Exchange public keys
-define('"'"'EXCH_CRYPTOPIA_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_POLONIEX_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_BITTREX_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_BLEUTRADE_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_BTER_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_YOBIT_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_CCEX_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_COINMARKETS_USER'"'"', '"'"''"'"');
-define('"'"'EXCH_COINMARKETS_PIN'"'"', '"'"''"'"');
-define('"'"'EXCH_BITSTAMP_ID'"'"','"'"''"'"');
-define('"'"'EXCH_BITSTAMP_KEY'"'"','"'"''"'"');
-define('"'"'EXCH_HITBTC_KEY'"'"','"'"''"'"');
-define('"'"'EXCH_KRAKEN_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_LIVECOIN_KEY'"'"', '"'"''"'"');
-define('"'"'EXCH_NOVA_KEY'"'"', '"'"''"'"');
-// Automatic withdraw to Yaamp btc wallet
-define('"'"'EXCH_AUTO_WITHDRAW'"'"', 0.3);
-// Nicehash keys
-define('"'"'NICEHASH_API_KEY'"'"','"'"'f96c65a7-3d2f-4f3a-815c-cacf00674396'"'"');
-define('"'"'NICEHASH_API_ID'"'"','"'"'825979'"'"');
-define('"'"'NICEHASH_DEPOSIT'"'"','"'"'3ABoqBjeorjzbyHmGMppM62YLssUgJhtuf'"'"');
-define('"'"'NICEHASH_DEPOSIT_AMOUNT'"'"','"'"'0.01'"'"');
-$cold_wallet_table = array(
-'"'"'bc1qpnxtg3dvtglrvfllfk3gslt6h5zffkf069nh8r'"'"' => 0.10,
-);
-$configFixedPoolFees = array(
-    '"'"'zr5'"'"' => 2.0,
-    '"'"'scrypt'"'"' => 20.0,
-    '"'"'sha256'"'"' => 5.0,
-);
-$configFixedPoolFeesSolo = array(
-    '"'"'zr5'"'"' => 2.0,
-    '"'"'scrypt'"'"' => 20.0,
-    '"'"'sha256'"'"' => 5.0,
-);
-$configCustomPorts = array();
-$configAlgoNormCoef = array();
-' | sudo -E tee /var/web/serverconfig.php >/dev/null 2>&1
+    local dbpass="$1"
+    local site_url="$2"
+    local admin_email="$3"
+    local admin_ip="$4"
+
+    # Admin UI credentials (used by /admin login)
+    local admin_user="${ADMIN_UI_USER:-admin}"
+    local admin_pass="${ADMIN_UI_PASS:-changeme}"
+
+    sudo tee /var/web/serverconfig.php >/dev/null <<PHP
+<?php
+ini_set('date.timezone','UTC');
+
+define('YAAMP_LOGS', '/var/log/yiimp');
+define('YAAMP_HTDOCS', '/var/web');
+define('YAAMP_BIN', '/var/bin');
+
+// Website
+define('YAAMP_SITE_URL', '${site_url}');
+define('YAAMP_SITE_NAME', 'MyYiimpPool');
+define('YAAMP_ADMIN_EMAIL', '${admin_email}');
+
+// Admin UI
+define('YIIMP_ADMIN_LOGIN', true);
+define('YAAMP_ADMIN_USER', '${admin_user}');
+define('YAAMP_ADMIN_PASS', '${admin_pass}');
+define('YAAMP_ADMIN_IP', '${admin_ip}');
+
+define('YAAMP_STRATUM_URL', YAAMP_SITE_URL);
+define('YAAMP_USE_NGINX', true);
+
+// Database
+define('YAAMP_DBHOST', 'localhost');
+define('YAAMP_DBNAME', 'yiimpfrontend');
+define('YAAMP_DBUSER', 'panel');
+define('YAAMP_DBPASSWORD', '${dbpass}');
+define('YAAMP_PRODUCTION', true);
+
+// Pool settings
+define('YAAMP_RENTAL', false);
+define('YAAMP_LIMIT_ESTIMATE', false);
+define('YAAMP_FEES_SOLO', 1.0);
+define('YAAMP_FEES_MINING', 0.5);
+define('YAAMP_FEES_EXCHANGE', 2);
+define('YAAMP_FEES_RENTING', 2);
+define('YAAMP_TXFEE_RENTING_WD', 0.002);
+define('YAAMP_PAYMENTS_FREQ', 2*60*60);
+define('YAAMP_PAYMENTS_MINI', 0.001);
+define('YAAMP_ALLOW_EXCHANGE', false);
+
+define('YIIMP_PUBLIC_EXPLORER', true);
+define('YIIMP_VOTE', true);
+define('YIIMP_PUBLIC_BENCHMARK', false);
+define('YIIMP_FIAT_ALTERNATIVE', 'USD');
+
+define('YAAMP_USE_NICEHASH_API', false);
+define('YAAMP_DEFAULT_ALGO', 'x11');
+define('YAAMP_CREATE_NEW_COINS', false);
+define('YAAMP_NOTIFY_NEW_COINS', false);
+
+// Placeholder keys (optional)
+define('EXCH_POLONIEX_KEY', '');
+define('EXCH_BITTREX_KEY', '');
+define('EXCH_YOBIT_KEY', '');
+define('EXCH_KRAKEN_KEY', '');
+
+	\$configCustomPorts = array();
+	\$configAlgoNormCoef = array();
+PHP
+
     log_message "Generated Yiimp serverconfig.php"
 }
-
 function getconfkeys
 {
     if [[ -z "$1" || -z "$2" ]]; then
