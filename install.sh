@@ -36,8 +36,8 @@ clear
     # Custom / project repo
     githubrepoZuz99=https://github.com/Zuz99/yiimp.git
 
-    
-    githubstratum=https://github.com/vaudois/stratum.git
+    #NOT USED
+    #githubstratum=https://github.com/vaudois/stratum.git
 
     echo "Starting installer..."
     
