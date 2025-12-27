@@ -1,9 +1,9 @@
 # Yiimp_install_scrypt v2.3.8 final tests on x64 (update Desember, 2025)
 ***********************************
 
-## Install script for yiimp on Ubuntu Server 22.04 (for test final)
+## Install script for yiimp on Ubuntu Server 22.04/24.04 Deb12 x64 (for test final)
 ## Forked : https://github.com/vaudois/yiimp_install_scrypt ##
-USE THIS SCRIPT ON FRESH INSTALL UBUNTU Server 22.04 x64 !
+USE THIS SCRIPT ON FRESH INSTALL UBUNTU Server 22.04/24.04 Deb12 x64 !
 
 Connect on your VPS =>
 - adduser pool
@@ -35,6 +35,8 @@ Go http://xxx.xxx.xxx.xxx or https://xxx.xxx.xxx.xxx (if you have chosen LetsEnc
 - Server Name 
 - Are you using a subdomain
 - Enter support email
+- Enter Admin User
+- Enter Password Admin
 - Set stratum to AutoExchange
 - Select Yimmp install
 - Your Public IP for admin access (Put your PERSONNAL IP, NOT IP of your VPS)
