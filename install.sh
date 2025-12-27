@@ -105,7 +105,7 @@ clear
         echo -e "$CYAN Loading parameters from $PARAMS_FILE for resume...$COL_RESET"
         source "$PARAMS_FILE"
         # Validate required parameters
-        required_params=("server_name" "sub_domain" "EMAIL" "admin_panel" "Public" "install_fail2ban" "ssl_install" "wg_install" "yiimpver")
+        required_params=("server_name" "sub_domain" "EMAIL" "admin_panel" "ADMIN_UI_USER" "ADMIN_UI_PASS" "Public" "install_fail2ban" "ssl_install" "wg_install" "yiimpver")
         for param in "${required_params[@]}"; do
             if [[ -z "${!param}" ]]; then
                 echo -e "$RED Error: Missing parameter $param in $PARAMS_FILE.$COL_RESET"
@@ -192,8 +192,17 @@ clear
 				echo "Error: Please enter a valid email address (e.g., admin@example.com)."
 			fi
 		done
-        read -e -p "Admin panel: enter custom URL name (press Enter for default: myAdminpanel): " admin_panel
-		admin_panel=${admin_panel:-myAdminpanel}
+
+        # Admin panel URL slug (no prompt): keep original default
+        admin_panel="myAdminpanel"
+
+        # Prompt Admin UI credentials (for /admin login)
+        read -e -p "Enter Admin username [admin]: " ADMIN_UI_USER
+        ADMIN_UI_USER=${ADMIN_UI_USER:-admin}
+        read -e -p "Enter Admin password (leave blank to auto-generate): " ADMIN_UI_PASS
+        if [[ -z "$ADMIN_UI_PASS" ]]; then
+            ADMIN_UI_PASS=$(cat /dev/urandom | tr -dc "a-zA-Z0-9" | fold -w 32 | head -n 1)
+        fi
 		while true; do
 			read -e -p "Enter IP for admin panel access (Enter for default: 0.0.0.0/0): " Public
 			Public=${Public:-0.0.0.0/0}
@@ -279,6 +288,8 @@ clear
         echo "sub_domain='$sub_domain'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
         echo "EMAIL='$EMAIL'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
         echo "admin_panel='$admin_panel'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
+        echo "ADMIN_UI_USER='$ADMIN_UI_USER'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
+        echo "ADMIN_UI_PASS='$ADMIN_UI_PASS'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
         echo "Public='$Public'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
         echo "install_fail2ban='$install_fail2ban'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
         echo "ssl_install='$ssl_install'" | sudo tee -a ${absolutepath}/${installtoserver}/resume/install_params.conf >/dev/null 2>&1
@@ -401,19 +412,24 @@ clear
         rootpasswd=$(openssl rand -base64 12)
         apt_install mariadb-server
 
-		# Manage mysql.service
-		if systemctl is-active --quiet mysql.service; then
-			hide_output "Restarting mysql..." sudo systemctl restart mysql.service
-		else
-			hide_output "Starting mysql..." sudo systemctl start mysql.service
-		fi
+        # Manage DB service (mariadb.service on most distros, mysql.service on some)
+        DB_SVC="mariadb"
+        if ! systemctl list-unit-files | awk '{print $1}' | grep -q '^mariadb\.service$'; then
+            DB_SVC="mysql"
+        fi
 
-		if ! systemctl is-enabled --quiet mysql.service; then
-			hide_output "Enabling mysql..." sudo systemctl enable mysql.service
-		fi
+        if systemctl is-active --quiet ${DB_SVC}.service; then
+            hide_output "Restarting ${DB_SVC}..." sudo systemctl restart ${DB_SVC}.service
+        else
+            hide_output "Starting ${DB_SVC}..." sudo systemctl start ${DB_SVC}.service
+        fi
+
+        if ! systemctl is-enabled --quiet ${DB_SVC}.service; then
+            hide_output "Enabling ${DB_SVC}..." sudo systemctl enable ${DB_SVC}.service
+        fi
 
         sleep 5
-        sudo systemctl status mysql | sed -n "1,3p"
+        sudo systemctl status ${DB_SVC} | sed -n "1,3p"
         log_message "Installed and started MariaDB"
         echo -e "$GREEN Done...$COL_RESET"
 
@@ -422,33 +438,42 @@ clear
         echo -e "$CYAN => Update system & Install PHP & software-properties $COL_RESET"
         sleep 3
 
+        # Ubuntu/Debian ship supported PHP versions. We do NOT add third-party PPAs.
+        # PHPVERSION is set in conf/prerequisite.sh based on OS.
         apt_install software-properties-common
 
-		if [ ! -f /etc/apt/sources.list.d/ondrej-php.list ]; then
-			simple_hide_output "Adding ondrej/php PPA..." add-apt-repository -y ppa:ondrej/php
-			simple_hide_output "Updating apt..." apt -y update
-			log_message "Added ondrej/php PPA"
-		fi
-        echo -e "$YELLOW >--> Installing PHP 8.2...$COL_RESET"
-        # Always use PHP 8.2 on Ubuntu 20.04/22.04 for Yiimp compatibility
-        PHPVERSION=8.2
+        echo -e "$YELLOW >--> Installing PHP ${PHPVERSION}...$COL_RESET"
 
-        simple_hide_output "Installing PHP 8.2 packages" apt install -y \
-            php8.2-fpm php8.2-cli php8.2-common php8.2-opcache php8.2-gd php8.2-mysql \
-            php8.2-curl php8.2-intl php8.2-mbstring php8.2-xml php8.2-zip php8.2-bcmath \
-            php8.2-imap php8.2-pspell php8.2-tidy php8.2-sqlite3 php8.2-gettext \
-            php8.2-memcache php8.2-memcached memcached php-memcache php-memcached
+        # helper: install a package only if available in the repo
+        apt_install_optional() {
+            for pkg in "$@"; do
+                if apt-cache show "$pkg" >/dev/null 2>&1; then
+                    apt_install "$pkg"
+                else
+                    echo -e "$YELLOW (optional) package not found, skipping: $pkg $COL_RESET"
+                fi
+            done
+        }
 
-        sudo phpenmod -v 8.2 mbstring || true
-        sudo phpenmod -v 8.2 memcache memcached || true
+        # Base PHP stack
+        apt_install php-common memcached
+        apt_install php${PHPVERSION}-fpm php${PHPVERSION}-cli php${PHPVERSION}-common php${PHPVERSION}-opcache \
+            php${PHPVERSION}-gd php${PHPVERSION}-mysql php${PHPVERSION}-curl php${PHPVERSION}-intl \
+            php${PHPVERSION}-mbstring php${PHPVERSION}-xml php${PHPVERSION}-zip php${PHPVERSION}-bcmath \
+            php${PHPVERSION}-sqlite3 php${PHPVERSION}-gettext
 
-        # Disable PHP 8.3 if it was pulled in by the PPA
-        sudo systemctl disable --now php8.3-fpm >/dev/null 2>&1 || true
+        # Optional extensions used by some setups
+        apt_install_optional php${PHPVERSION}-imap php${PHPVERSION}-pspell php${PHPVERSION}-tidy
+        apt_install_optional php-memcache php-memcached
 
-        simple_hide_output "Update alternatives php8.2" update-alternatives --set php /usr/bin/php8.2
-        simple_hide_output "Restart php8.2" systemctl enable --now php8.2-fpm
-        sudo systemctl status php8.2-fpm | sed -n "1,3p"
-        log_message "Installed PHP 8.2 and dependencies"
+        # Ensure correct php CLI default
+        if [[ -x "/usr/bin/php${PHPVERSION}" ]]; then
+            simple_hide_output "Update alternatives php${PHPVERSION}" update-alternatives --set php /usr/bin/php${PHPVERSION} >/dev/null 2>&1 || true
+        fi
+
+        simple_hide_output "Enable php${PHPVERSION}-fpm" systemctl enable --now php${PHPVERSION}-fpm
+        sudo systemctl status php${PHPVERSION}-fpm | sed -n "1,3p"
+        log_message "Installed PHP ${PHPVERSION} and dependencies"
 
         sleep 5
         echo -e "$GREEN Done...$COL_RESET"
@@ -456,7 +481,7 @@ clear
         # Fix CDbConnection failed to open the DB connection.
         echo
         echo -e "$CYAN => Fixing DBconnection issue $COL_RESET"
-        apt_install php8.2-mysql
+        apt_install php${PHPVERSION}-mysql
 		if systemctl is-active --quiet nginx.service; then
 			hide_output "Restarting nginx..." sudo systemctl restart nginx.service
 		else
@@ -562,8 +587,11 @@ clear
         blckntifypass=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 
         # Admin UI credentials (used by /admin login)
-        ADMIN_UI_USER="admin"
-        ADMIN_UI_PASS=$(cat /dev/urandom | tr -dc "a-zA-Z0-9" | fold -w 32 | head -n 1)
+        # Keep the values from the earlier prompt; only generate if missing.
+        : "${ADMIN_UI_USER:=admin}"
+        if [[ -z "${ADMIN_UI_PASS}" ]]; then
+            ADMIN_UI_PASS=$(cat /dev/urandom | tr -dc "a-zA-Z0-9" | fold -w 32 | head -n 1)
+        fi
 
 
         # Download Yiimp source (Option B: always clone from GitHub)
@@ -709,6 +737,11 @@ clear
         cd ${absolutepath}/yiimp
         sudo cp -r ${absolutepath}/yiimp/blocknotify/blocknotify /usr/bin/
         sudo cp -r ${absolutepath}/yiimp/blocknotify/blocknotify /var/stratum/
+
+        # Ensure the current user can run the stratum binary & read configs
+        sudo chmod 755 /var/stratum/stratum >/dev/null 2>&1 || true
+        sudo chown -R ${whoami}:${whoami} /var/stratum >/dev/null 2>&1 || true
+        sudo chmod -R u+rwX,go+rX /var/stratum >/dev/null 2>&1 || true
         sudo mkdir -p /etc/yiimp
         sudo chgrp ${whoami} /etc/yiimp
         sudo chown ${whoami} /etc/yiimp
@@ -873,23 +906,32 @@ clear
         SQL="${Q1}${Q2}"
         sudo mysql -u root -p="" -e "$SQL"  
         
-        # Create my.cnf
-        echo '[clienthost1]
-        user=panel
-        password='"${password}"'
-        database=yiimpfrontend
-        host=localhost
-        [clienthost2]
-        user=stratum
-        password='"${password2}"'
-        database=yiimpfrontend
-        host=localhost
-        [myphpadmin]
-        user=phpmyadmin
-        password='"${AUTOGENERATED_PASS}"'
-        [mysql]
-        user=root
-        password='"${rootpasswd}"'' | sudo -E tee ~/.my.cnf >/dev/null 2>&1
+        # Create ~/.my.cnf (no leading indentation)
+        sudo -E tee ~/.my.cnf >/dev/null 2>&1 <<EOF
+[clienthost1]
+user=panel
+password=${password}
+database=yiimpfrontend
+host=localhost
+
+[clienthost2]
+user=stratum
+password=${password2}
+database=yiimpfrontend
+host=localhost
+
+[myphpadmin]
+user=phpmyadmin
+password=${AUTOGENERATED_PASS}
+
+[mysql]
+user=root
+password=${rootpasswd}
+
+[yiimp_admin_ui]
+user=${ADMIN_UI_USER}
+password=${ADMIN_UI_PASS}
+EOF
         sudo chgrp ${whoami} ~/.my.cnf
         sudo chown ${whoami} ~/.my.cnf
         sudo chmod 0600 ~/.my.cnf
@@ -1144,22 +1186,31 @@ echo -e "$GREEN Done...$COL_RESET"
     echo -e "$CYAN => Final Directory permissions $COL_RESET"
     sleep 3
 
-    echo '[clienthost1]
-    user=panel
-    database=yiimpfrontend
-    password='"${password}"'
-    host=localhost
-    [clienthost2]
-    user=stratum
-    database=yiimpfrontend
-    password='"${password2}"'
-    host=localhost
-    [myphpadmin]
-    user=phpmyadmin
-    password='"${AUTOGENERATED_PASS}"'
-    [mysql]
-    user=root
-    password='"${rootpasswd}"'' | sudo -E tee ${absolutepath}/${installtoserver}/conf/server.conf >/dev/null 2>&1
+    sudo -E tee ${absolutepath}/${installtoserver}/conf/server.conf >/dev/null 2>&1 <<EOF
+[clienthost1]
+user=panel
+database=yiimpfrontend
+password=${password}
+host=localhost
+
+[clienthost2]
+user=stratum
+database=yiimpfrontend
+password=${password2}
+host=localhost
+
+[myphpadmin]
+user=phpmyadmin
+password=${AUTOGENERATED_PASS}
+
+[mysql]
+user=root
+password=${rootpasswd}
+
+[yiimp_admin_ui]
+user=${ADMIN_UI_USER}
+password=${ADMIN_UI_PASS}
+EOF
     sudo chgrp ${whoami} ${absolutepath}/${installtoserver}/conf/server.conf
     sudo chown ${whoami} ${absolutepath}/${installtoserver}/conf/server.conf
     sudo chmod 0600 ${absolutepath}/${installtoserver}/conf/server.conf

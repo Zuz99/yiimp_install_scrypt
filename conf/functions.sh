@@ -43,25 +43,39 @@ function check_and_install_dependencies {
     done
 
     if [ -n "$missing_packages" ]; then
-        DEBIAN_FRONTEND=noninteractive sudo apt install -y -qq $missing_packages >/dev/null 2>&1
-        [ $? -ne 0 ] && exit 1
+        echo -e "${YELLOW} Installing missing packages:${COL_RESET} ${missing_packages}"
+
+        # Ask for sudo password once (works on Debian/Ubuntu with or without NOPASSWD)
+        if ! sudo -v; then
+            echo -e "${RED} Error: sudo privileges are required to install dependencies.${COL_RESET}"
+            exit 1
+        fi
+
+        sudo apt-get update -y
+        if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y $missing_packages; then
+            echo -e "${RED} Error: Failed to install required dependencies:${COL_RESET} ${missing_packages}"
+            echo -e "${YELLOW} Tip:${COL_RESET} check DNS/network and apt sources, then re-run."
+            exit 1
+        fi
     fi
 }
 
 # Rafraîchir le cache sudo pour éviter l'expiration
 function refresh_sudo_cache {
-    sudo -n true 2>/dev/null || {
-        echo -e "${RED} Error: Sudo cache expired or not available. Please re-run with sudo or configure NOPASSWD.${COL_RESET}"
+    # Refresh sudo timestamp (interactive if needed)
+    if ! sudo -v; then
+        echo -e "${RED} Error: sudo privileges are required.${COL_RESET}"
         log_message "Sudo cache refresh failed"
         exit 1
-    }
+    fi
     log_message "Sudo cache refreshed"
 }
 
 # Vérification initiale des privilèges sudo
 function check_sudo_privileges {
-    if ! sudo -n true 2>/dev/null; then
-        echo -e "${RED} Error: This script requires sudo privileges. Please run with sudo or configure NOPASSWD.${COL_RESET}"
+    if ! sudo -v; then
+        echo -e "${RED} Error: This script requires sudo privileges.${COL_RESET}"
+        echo -e "${YELLOW} Tip:${COL_RESET} run as a user in the sudo group (or as root)."
         log_message "Sudo privileges check failed"
         exit 1
     fi
@@ -358,13 +372,8 @@ function get_default_privateip {
 
 # Terminal art start screen.
 function term_art_server {
-    if [[ "${DISTRO}" == "22" ]]; then
-        PHPINSTALL=8.3
-    elif [[ "${DISTRO}" == "20" ]]; then
-        PHPINSTALL=8.2
-    else
-        PHPINSTALL=7.3
-    fi
+    # PHP version is detected in conf/prerequisite.sh and exported as PHPVERSION
+    PHPINSTALL="${PHPVERSION:-unknown}"
     clear
     echo
     startlogo

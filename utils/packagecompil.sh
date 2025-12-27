@@ -2,17 +2,19 @@
 ################################################################################
 #
 # Program:
-#   Install needed packages to compile cryptocurrency on Ubuntu 20.04/22.04
+#   Install needed packages to compile cryptocurrency on Ubuntu 22/24 and Debian 12
 #
 ################################################################################
 
 function package_compile_crypto
 {
-    # Activer le dépôt universe si nécessaire
-    echo " >--> Ensuring universe repository is enabled..."
-    sudo add-apt-repository universe -y > /dev/null 2>&1
-	simple_hide_output "Updating apt..." apt -y update
-	simple_hide_output "Upgrading apt..." apt -y upgrade
+    # Enable Ubuntu universe if applicable (Debian doesn't have it)
+    if [[ "${OS_ID}" == "ubuntu" ]]; then
+        echo " >--> Ensuring universe repository is enabled..."
+        sudo add-apt-repository universe -y > /dev/null 2>&1 || true
+    fi
+    simple_hide_output "Updating apt..." apt -y update
+    simple_hide_output "Upgrading apt..." apt -y upgrade
 
     # Paquets de base pour la compilation
     apt_install build-essential libc6-dev libtool gettext bsdmainutils git cmake autotools-dev automake pkg-config libzmq3-dev
@@ -52,11 +54,24 @@ function package_compile_crypto
  	echo -e "$YELLOW => Installing Package to compile crypto currency$YELLOW step 4 $COL_RESET"
  	sleep 3
 
-    # Paquets spécifiques à Ubuntu 20.04 ou 22.04
-    if [[ "$DISTRO" == "20" ]]; then
-        apt_install libcurl4-gnutls-dev libidn11-dev libgcc-10-dev
-    elif [[ "$DISTRO" == "22" ]]; then
-        apt_install libcurl4-openssl-dev libidn2-dev libgcc-11-dev
+    # Distro-specific packages
+    # libcurl dev differs slightly between distros; install what's available.
+    if apt-cache show libcurl4-openssl-dev >/dev/null 2>&1; then
+        apt_install libcurl4-openssl-dev
+    elif apt-cache show libcurl4-gnutls-dev >/dev/null 2>&1; then
+        apt_install libcurl4-gnutls-dev
+    fi
+
+    if apt-cache show libidn2-dev >/dev/null 2>&1; then
+        apt_install libidn2-dev
+    elif apt-cache show libidn11-dev >/dev/null 2>&1; then
+        apt_install libidn11-dev
+    fi
+
+    # Pick the newest available libgcc-*-dev dynamically (avoid hardcoding 10/11/13...)
+    LIBGCC_DEV=$(apt-cache search -n '^libgcc-[0-9]+-dev$' | awk '{print $1}' | sort -V | tail -1)
+    if [[ -n "$LIBGCC_DEV" ]]; then
+        apt_install "$LIBGCC_DEV"
     fi
 
 	echo -e "$GREEN Done...$COL_RESET"
@@ -91,10 +106,15 @@ function package_compile_crypto
 	    exit 1
 	fi
  
-    # Vérifier les paquets essentiels (non bloquant)
-    for pkg in build-essential libc6-dev libgcc-11-dev; do
-        if ! dpkg -l | grep -q $pkg; then
-            echo -e "$RED Warning: Failed to install $pkg, continuing...$COL_RESET"
+    # Check essentials (non-blocking)
+    for pkg in build-essential libc6-dev; do
+        if ! dpkg -l | grep -q "^ii\s\+${pkg}\b"; then
+            echo -e "$RED Warning: Failed to install ${pkg}, continuing...$COL_RESET"
         fi
     done
+    if [[ -n "$LIBGCC_DEV" ]]; then
+        if ! dpkg -l | grep -q "^ii\s\+${LIBGCC_DEV}\b"; then
+            echo -e "$RED Warning: Failed to install ${LIBGCC_DEV}, continuing...$COL_RESET"
+        fi
+    fi
 }
