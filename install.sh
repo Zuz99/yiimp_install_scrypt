@@ -1,17 +1,12 @@
 #!/bin/bash
 #################################################################################
 # Author: Vaudois
-#
+#Forked : Zuz99
 # Program:
-#   Install yiimp on Ubuntu 20.04 & 22.04 running Nginx, MariaDB, and PHP 8.2/8.3
-#   v2.3.8 beta(for test)
-#   Modified for include ARM compatibility
+#   Install yiimp on Ubuntu 22.04 & 24.04 Debian 12 running Nginx, MariaDB, and PHP 8.2/8.3
+#   
+#   
 #################################################################################
-
-if [ -z "${TAG}" ]; then
-    TAG=v2.3.8
-fi
-
 NPROC=$(nproc)
 
 # Script directory (for local yiimp.zip support)
